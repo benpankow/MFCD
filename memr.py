@@ -8,6 +8,7 @@ from BTrees.OOBTree import OOBTree
 from ZODB import FileStorage, DB
 import transaction
 from persistent import Persistent
+import os
 
 storage = FileStorage.FileStorage("memr.fs")
 db = DB(storage)
@@ -120,10 +121,11 @@ def processPages():
         transaction.commit()
 
 def command(user, cmd, args):
-    if cmd == "kill" and user == admin:
-        print "Exiting..."
-        sys.exit()
-        print "DID NOT EXIT BAD"
+    # doesn't work, needs fixing
+    # if cmd == "kill" and user == admin:
+    #     print "Exiting..."
+    #     os.system('kill %d' % os.getpid())
+    #     print "DID NOT EXIT BAD"
 
     if cmd == "add" and len(args) >= 1:
         url = args[0]
@@ -151,12 +153,14 @@ def command(user, cmd, args):
                     pages[id].addUser(user)
                     aliases[user][name] = id
                     bot.sendMessage(user, "Successfully subscribed to " + page["name"])
+                    aliases._p_changed = True
                     transaction.commit()
             else:
                 pages[id] = Page(id, page["name"])
                 pages[id].addUser(user)
                 aliases[user][name] = id
                 bot.sendMessage(user, "Successfully subscribed to " + page["name"])
+                aliases._p_changed = True
                 transaction.commit()
 
         except facebook.GraphAPIError:
@@ -187,6 +191,7 @@ def command(user, cmd, args):
                 page.removeUser(user)
 
                 bot.sendMessage(user, "Successfully unsubscribed from page")
+                aliases._p_changed = True
                 del aliases[user][name]
                 transaction.commit()
         else:
@@ -229,5 +234,5 @@ print "Running..."
 
 # This keeps the program running. Idk what the significance of the 10 is, just based on example docs
 while 1:
-    time.sleep(60)  # maybe change
+    time.sleep(1)  # maybe change
     processPages()
