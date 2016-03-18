@@ -1,4 +1,5 @@
 import time
+import sys
 import telepot
 from config import *
 import facebook
@@ -119,6 +120,11 @@ def processPages():
         transaction.commit()
 
 def command(user, cmd, args):
+    if cmd == "kill" and user == admin:
+        print "Exiting..."
+        sys.exit()
+        print "DID NOT EXIT BAD"
+
     if cmd == "add" and len(args) >= 1:
         url = args[0]
 
