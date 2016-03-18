@@ -234,5 +234,5 @@ print "Running..."
 
 # This keeps the program running. Idk what the significance of the 10 is, just based on example docs
 while 1:
-    time.sleep(1)  # maybe change
+    time.sleep(30)  # maybe change
     processPages()
