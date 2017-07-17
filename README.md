@@ -11,3 +11,6 @@
  * Saves user subscriptions if bot stops running, and command or new posts made while offline will be processed when bot comes back online
  * Abstracted version of original MEMR, allowing support for many content platforms
  * Currently supports: Facebook feeds, Twitter feeds
+
+## About
+The original version of MCFD (titled memr) was developed in a few hours by Marshall Mueller and I in UW Madison's UPL in the spring of 2016, following which I decided to rework the system to accomidate a larger variety of content feeds.
