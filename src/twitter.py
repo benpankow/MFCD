@@ -43,7 +43,7 @@ class Twitter:
 					return (1, page.name, id)
 
 			else:
-				self.pages[id] = Page(id, page.name, page.screen_name, self.api)
+				self.pages[id] = createPage(id, page.name, page.screen_name, self.api)
 				self.pages[id].addUser(user)
 				transaction.commit()
 				return (1, page.name, id)
@@ -60,8 +60,7 @@ class Twitter:
 
 		try:
 			page = self.api.GetUser(screen_name=url)
-			
-			return page.name
+			return "@" + page.screen_name
 
 		except twitter.TwitterError:
 			print "OOPSIE"
@@ -99,7 +98,42 @@ class Twitter:
 		return "ERROR"
 
 	def processPages(self, bot):
+		pagesToRemove = []
+		for pageId in self.pages:
+			page = self.pages[pageId]
+			if len(page.users) == 0:
+				pagesToRemove.append(pageId)
+				continue
+
+			foundOld = False
+			print "Processing page with id " + str(pageId)
+
+			pagePosts = self.api.GetUserTimeline(user_id = page.id, count = 100)
+			apiPage = self.api.GetUser(user_id=page.id)
+			for post in pagePosts:
+				postId = post.id
+				if postId in page.posts:
+					print "Old post found"
+					foundOld = True
+					break
+				else:
+					page.addPost(postId)
+					transaction.commit()
+					for uid in page.users:
+						bot.sendMessage(uid, page.name + " (@" + apiPage.screen_name + ")\n" + post.text)
+
+				if foundOld:
+					break
+
+			# Remove unfollowed pages
+			for pageId in pagesToRemove:
+				del self.pages[pageId]
+				transaction.commit()
+
+
 		return
+
+
 		pagesToRemove = []
 		for pageId in self.pages:
 			page = self.pages[pageId]
@@ -157,22 +191,24 @@ class Twitter:
 			del self.pages[pageId]
 			transaction.commit()
 
+def createPage(id, name, url, api):
+	page = Page()
+
+	page.id = id
+	page.url = url
+	page.users = []
+	page.posts = []
+	page.name = name
+
+	# Process existing posts
+	pagePosts = api.GetUserTimeline(user_id = id, count = 100)
+	for post in pagePosts:
+		postId = post.id
+		page.posts.append(postId)
+
+	return page
 
 class Page(Persistent):
-
-	def __init__(self, id, name, url, api):
-		self.id = id
-		self.url = url
-		self.users = []
-		self.posts = []
-		self.name = name
-
-		# Process existing posts
-		pagePosts = api.GetUserTimeline(user_id = id, count = 100)
-		for post in pagePosts:
-			postId = post.id
-			self.posts.append(postId)
-
 	def addUser(self, uid):
 		self.users.append(uid)
 		self._p_changed = True

@@ -25,7 +25,10 @@ dbroot = conn.root()
 
 # A list of content sources to test against when a user /adds a page.
 # They are listed in order of priority, the first source will be checked first.
-contentSources = {"facebook" : Facebook(dbroot)}
+contentSources = {
+	"facebook" : Facebook(dbroot),
+	"twitter" : Twitter(dbroot)
+}
 
 if "aliases" not in dbroot:
 	print "aliases not in dbroot"
