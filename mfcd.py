@@ -14,10 +14,11 @@ from ZODB import FileStorage, DB
 import transaction
 from persistent import Persistent
 import os
+from telepot.loop import MessageLoop
 
 
 
-storage = FileStorage.FileStorage("memr.fs")
+storage = FileStorage.FileStorage("mfcd.fs")
 db = DB(storage)
 conn = db.open()
 dbroot = conn.root()
@@ -29,7 +30,7 @@ contentSources = {"facebook" : Facebook(dbroot)}
 if "aliases" not in dbroot:
 	print "aliases not in dbroot"
 	dbroot["aliases"] = OOBTree()
-
+	transaction.commit()
 aliases = dbroot["aliases"]
 
 # Called every X seconds, dispatches a process to each content source
@@ -82,12 +83,13 @@ def command(user, cmd, args):
 			if name in aliases[user]:
 				bot.sendMessage(user, "That alias is already in use")
 			else:
+				print "Trying to add source..."
 				# Add the source for that user. Responses are:
 				# 0 - if the page doesn't exist
 				# (-1, "page name", "id") - if the user is already subscribed
 				# (1, "page name", "id") - if the subscription was a success
 				result = s.addSource(user, url)
-
+				print result
 				# Return if page doesn't exist
 				if result == 0:
 					bot.sendMessage(user, "Page does not exist")
@@ -180,10 +182,10 @@ def handle(msg):
 bot = telepot.Bot(telegramKey)
 
 # Tell the bot to call handle() when a message is received
-bot.notifyOnMessage(handle)
+MessageLoop(bot, handle).run_as_thread()
 print "Running..."
 
 # This keeps the program running. Idk what the significance of the 10 is, just based on example docs
 while 1:
-	time.sleep(30)  # maybe change
+	time.sleep(10)  # maybe change
 	processPages()

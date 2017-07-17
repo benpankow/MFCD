@@ -9,6 +9,15 @@ from ZODB import FileStorage, DB
 import transaction
 from persistent import Persistent
 import requests
+import json
+
+# Obtain FB authorization token - uses the appid and app secret tokens
+def get_fb_token(app_id, app_secret):           
+	payload = {'grant_type': 'client_credentials', 'client_id': app_id, 'client_secret': app_secret}
+	response = requests.post('https://graph.facebook.com/oauth/access_token?', params = payload)
+	data = json.loads(response.text)
+	result = data['access_token']
+	return result
 
 # This is an example content source
 class Facebook:
@@ -16,7 +25,7 @@ class Facebook:
 	# Init function sets up all needed APIs, loads saved info on page
 	# subscriptions for this content source
 	def __init__(self, dbroot):
-		accessToken = facebook.get_app_access_token(fbid, fbsecret)
+		accessToken = get_fb_token(fbid, fbsecret)
 		self.graph = facebook.GraphAPI(access_token = accessToken)
 
 		if "fbpages" not in dbroot:
@@ -33,7 +42,6 @@ class Facebook:
 	#	(-1, "page name", "id") - if page already subscribed to
 	#	(1, "page name", "id") - if success
 	def addSource(self, user, url):
-
 		if "/" in url:
 			slashPos = url.rfind("/", 0, -2)
 			url = url[slashPos + 1:]
@@ -42,7 +50,6 @@ class Facebook:
 
 		try:
 			page = self.graph.get_object(id=url)
-			
 			id = page["id"]
 			if id in self.pages:
 				if self.pages[id].hasUser(user):
@@ -53,7 +60,7 @@ class Facebook:
 					return (1, page["name"], id)
 
 			else:
-				self.pages[id] = Page(id, page["name"], self.graph)
+				self.pages[id] = createPage(id, page["name"], self.graph)
 				self.pages[id].addUser(user)
 				transaction.commit()
 				return (1, page["name"], id)
@@ -195,25 +202,31 @@ class Facebook:
 			del self.pages[pageId]
 			transaction.commit()
 
+def createPage(id, name, graph):
+	page = Page()
+	page.id = id
+	page.users = []
+	page.posts = []
+	page.name = name
+
+	# Process existing posts
+	pagePosts = graph.get_connections(id, "posts")
+	count = 0
+	while 1:
+		try:
+			for post in pagePosts["data"]:
+				postId = post["id"]
+				page.posts.append(postId)
+			count += 1
+			if count > 15:
+				break
+			pagePosts = requests.get(pagePosts['paging']['next']).json()
+		except KeyError:
+			break
+	return page
+
 # Page class for internal usage.
 class Page(Persistent):
-
-	def __init__(self, id, name, graph):
-		self.id = id
-		self.users = []
-		self.posts = []
-		self.name = name
-
-		# Process existing posts
-		pagePosts = graph.get_connections(id, "posts")
-		while 1:
-			try:
-				for post in pagePosts["data"]:
-					postId = post["id"]
-					self.posts.append(postId)
-				pagePosts = requests.get(pagePosts['paging']['next']).json()
-			except KeyError:
-				break
 
 	def addUser(self, uid):
 		self.users.append(uid)
